@@ -7,15 +7,22 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - db-data:/foo
 
   auth-server:
-    container_name: "auth-server"
+    restart: on-failure
     build: .
     ports:
       - 8090:8090
     expose:
       - 8090
-    links:
-      - db
+    # links:
+    #   - db
     depends_on:
       - db
+    environment:
+      FLASK_DATABASE_HOST: db
+
+volumes:
+  db-data:

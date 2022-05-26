@@ -5,7 +5,8 @@ environ['FLASK_ENV'] = 'development'
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
 
-con = pymongo.MongoClient("mongodb://root:password@db:27017/")
+host = getattr(environ, 'FLASK_DATABASE_HOST', 'localhost')
+con = pymongo.MongoClient(f"mongodb://root:password@{host}:27017/")
 db = con['probadb']
 print(con.list_database_names())
     

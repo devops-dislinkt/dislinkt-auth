@@ -23,6 +23,7 @@ services:
       - db
     environment:
       FLASK_DATABASE_HOST: db
+      FLASK_SECRET_KEY: secret
 
 volumes:
   db-data:

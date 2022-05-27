@@ -5,6 +5,32 @@ from app.models import User
 from pymongo.errors import DuplicateKeyError
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
+from functools import wraps
+
+def check_token(f):
+    @wraps(f)
+    def wrap(*args, **kwargs):
+        if not request.headers.get('authorization'): 
+            return {'message': 'No token provided'}, 400
+    
+        try:
+            token = request.headers['authorization'].split(' ')[1]
+            # verify token
+            user = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+        
+        except jwt.ExpiredSignatureError:
+            return 'Signature expired. Please log in again.', 400
+        except jwt.InvalidTokenError:
+            return 'Invalid token. Please log in again.', 400
+
+        return f(*args, **kwargs)
+    return wrap
+
+
+@app.route('/check-token')
+@check_token
+def test_if_token_works():
+    return 'token works'
 
 @app.route('/')
 def main():
@@ -57,5 +83,6 @@ def login_user():
     if not is_password_correct: return 'wrong password provided', 400
 
     token = jwt.encode({'user_id': user.username, 'exp': datetime.utcnow() + timedelta(minutes=30)},
-                        app.config['SECRET_KEY'])
+                        app.config['SECRET_KEY'],
+                        algorithm='HS256')
     return token

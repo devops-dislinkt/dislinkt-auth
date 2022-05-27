@@ -1,34 +1,36 @@
 from flask import jsonify, request
 from app import app, users_col
 from app.models import User
+from pymongo.errors import DuplicateKeyError
+from werkzeug.security import generate_password_hash, check_password_hash
 
 @app.route('/')
 def main():
     temp = 'world'
     return 'hello ' + temp
 
-@app.route('/db')
-def test_db():
-    print('connecting')
-    users_arr = []
-    users = users_col.find()
-    for user in users:
-        print(user)
-        users_arr.append(user)
-    
-    return jsonify(users_arr)
-
-@app.post('/create-new-user')
+@app.post('/users')
 def create_new_user():
     data = request.json
-    print(f'data: {data}, {type(data)}')
-    user = User(name=data['name'], 
-                surname=data['surname'], 
-                email=data['email']
-                )
+    print(f'data: {data}')
+    hashed_password = generate_password_hash(data['password'])
+    user = User(username=data['username'], password=hashed_password)
 
-    # add to db
-    response = users_col.insert_one(data)
-    print(response.acknowledged, response.inserted_id)
-    return jsonify("done")
+    # add to db and check if username is unique
+    try:
+        users_col.insert_one({
+            '_id': user.username, 
+            'username': user.username,
+            'password': user.password})
+    except DuplicateKeyError:
+        return jsonify("username not unique"), 400
+    
+    return jsonify(user.username)
 
+
+@app.get('/users')
+def get_all_users():
+    users_documents = users_col.find()
+    users: list[dict] = [user_document for user_document in users_documents]
+    for user in users: user['_id'] = str(user['_id'])
+    return jsonify(users)

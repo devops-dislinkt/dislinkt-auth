@@ -1,18 +1,65 @@
+from datetime import datetime, timedelta
 from flask import jsonify, request
-from app import app, db
+from app import app, users_col
+from app.models import User
+from pymongo.errors import DuplicateKeyError
+from werkzeug.security import generate_password_hash, check_password_hash
+import jwt
+from app.routes_utils import check_token, required_roles
 
-@app.route('/')
-def main():
-    temp = 'world'
-    return 'hello ' + temp
 
-@app.route('/db')
-def test_db():
-    print('connecting')
-    users_arr = []
-    users = db['users'].find()
-    for user in users:
-        print(user)
-        users_arr.append(user)
+@app.route('/check-token')
+@check_token
+def test_if_token_works():
+    return 'token works'
+
+@app.post('/users')
+def create_new_user():
+    data = request.json
+    print(f'data: {data}')
+    hashed_password = generate_password_hash(data['password'])
+    user = User(username=data['username'], password=hashed_password)
+
+    # add to db and check if username is unique
+    try:
+        users_col.insert_one({
+            '_id': user.username, 
+            'password': user.password,
+            'role': user.role})
+    except DuplicateKeyError:
+        return jsonify("username not unique"), 400
     
-    return jsonify(users_arr)
+    return jsonify(user.username)
+
+
+@app.get('/users')
+@check_token
+@required_roles(['admin'])
+def get_all_users():
+    users_documents = users_col.find()
+    users: list[dict] = [user_document for user_document in users_documents]
+    for user in users: user['_id'] = str(user['_id'])
+    return jsonify(users)
+
+@app.get('/login')
+def login_user():
+    data = request.json
+    if not data['username'] or not data['password']:   return 'did not receive username or password', 400 
+    username = data['username']
+    password = data['password']
+
+    # find user with username
+    user:dict | User | None = users_col.find_one({'_id': username})
+    if not user: return f'not found user with username: {username}', 400
+    user = User(username = user['_id'],
+                password = user['password'],
+                role = user['role'])
+    
+    # check password
+    is_password_correct = check_password_hash(user.password, password)
+    if not is_password_correct: return 'wrong password provided', 400
+
+    token = jwt.encode({'username': user.username, 'exp': datetime.utcnow() + timedelta(minutes=30)},
+                        app.config['SECRET_KEY'],
+                        algorithm='HS256')
+    return token

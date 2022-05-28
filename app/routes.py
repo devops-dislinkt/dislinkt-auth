@@ -5,37 +5,13 @@ from app.models import User
 from pymongo.errors import DuplicateKeyError
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
-from functools import wraps
-
-def check_token(f):
-    @wraps(f)
-    def wrap(*args, **kwargs):
-        if not request.headers.get('authorization'): 
-            return {'message': 'No token provided'}, 400
-    
-        try:
-            token = request.headers['authorization'].split(' ')[1]
-            # verify token
-            user = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
-        
-        except jwt.ExpiredSignatureError:
-            return 'Signature expired. Please log in again.', 400
-        except jwt.InvalidTokenError:
-            return 'Invalid token. Please log in again.', 400
-
-        return f(*args, **kwargs)
-    return wrap
+from app.routes_utils import check_token, required_roles
 
 
 @app.route('/check-token')
 @check_token
 def test_if_token_works():
     return 'token works'
-
-@app.route('/')
-def main():
-    temp = 'world'
-    return 'hello ' + temp
 
 @app.post('/users')
 def create_new_user():
@@ -48,7 +24,6 @@ def create_new_user():
     try:
         users_col.insert_one({
             '_id': user.username, 
-            'username': user.username,
             'password': user.password,
             'role': user.role})
     except DuplicateKeyError:
@@ -58,6 +33,8 @@ def create_new_user():
 
 
 @app.get('/users')
+@check_token
+@required_roles(['admin'])
 def get_all_users():
     users_documents = users_col.find()
     users: list[dict] = [user_document for user_document in users_documents]
@@ -82,7 +59,7 @@ def login_user():
     is_password_correct = check_password_hash(user.password, password)
     if not is_password_correct: return 'wrong password provided', 400
 
-    token = jwt.encode({'user_id': user.username, 'exp': datetime.utcnow() + timedelta(minutes=30)},
+    token = jwt.encode({'username': user.username, 'exp': datetime.utcnow() + timedelta(minutes=30)},
                         app.config['SECRET_KEY'],
                         algorithm='HS256')
     return token

@@ -11,14 +11,14 @@ services:
       - db-data:/foo
 
   auth-server:
-    restart: on-failure
     build: .
+    restart: on-failure
     ports:
       - 8090:8090
     expose:
       - 8090
     # links:
-    #   - db
+      # - db
     depends_on:
       - db
     environment:

@@ -37,7 +37,7 @@ def required_roles(roles: list[str]):
                  # find user with username
                 user = users_col.find_one({'_id': user['username']})
                 if not user: return f'not found user with username: {user["username"]}', 400
-                user = User(username = user['username'],
+                user = User(username = user['_id'],
                             password = user['password'],
                             role = user['role'])
                 

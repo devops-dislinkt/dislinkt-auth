@@ -51,7 +51,7 @@ def login_user():
     # find user with username
     user:dict | User | None = users_col.find_one({'_id': username})
     if not user: return f'not found user with username: {username}', 400
-    user = User(username = user['username'],
+    user = User(username = user['_id'],
                 password = user['password'],
                 role = user['role'])
     

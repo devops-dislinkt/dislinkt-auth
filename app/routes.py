@@ -11,7 +11,7 @@ from app.routes_utils import check_token, required_roles
 @app.post('/users')
 def create_new_user():
     data = request.json
-    print(f'data: {data}')
+    if not data.get('username') or not data.get('password'):   return 'did not receive username or password', 400 
     hashed_password = generate_password_hash(data['password'])
     user = User(username=data['username'], password=hashed_password)
 
@@ -40,7 +40,7 @@ def get_all_users():
 @app.get('/login')
 def login_user():
     data = request.json
-    if not data['username'] or not data['password']:   return 'did not receive username or password', 400 
+    if not data.get('username') or not data.get('password'):   return 'did not receive username or password', 400 
     username = data['username']
     password = data['password']
 

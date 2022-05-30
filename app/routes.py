@@ -6,7 +6,11 @@ from pymongo.errors import DuplicateKeyError
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
 from app.routes_utils import check_token, required_roles
+import json
+from kafka import KafkaProducer
 
+producer = KafkaProducer(bootstrap_servers=[app.config['KAFKA']],
+                         value_serializer=lambda v: json.dumps(v).encode('utf-8'))
 
 @app.post('/users')
 def create_new_user():
@@ -21,6 +25,7 @@ def create_new_user():
             '_id': user.username, 
             'password': user.password,
             'role': user.role})
+        producer.send(app.config['KAFKA_TOPIC'], {'username': user.username})
     except DuplicateKeyError:
         return jsonify("username not unique"), 400
     

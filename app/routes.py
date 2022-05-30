@@ -8,15 +8,10 @@ import jwt
 from app.routes_utils import check_token, required_roles
 
 
-@app.route('/check-token')
-@check_token
-def test_if_token_works():
-    return 'token works'
-
 @app.post('/users')
 def create_new_user():
     data = request.json
-    print(f'data: {data}')
+    if not data.get('username') or not data.get('password'):   return 'did not receive username or password', 400 
     hashed_password = generate_password_hash(data['password'])
     user = User(username=data['username'], password=hashed_password)
 
@@ -41,10 +36,11 @@ def get_all_users():
     for user in users: user['_id'] = str(user['_id'])
     return jsonify(users)
 
+
 @app.get('/login')
 def login_user():
     data = request.json
-    if not data['username'] or not data['password']:   return 'did not receive username or password', 400 
+    if not data.get('username') or not data.get('password'):   return 'did not receive username or password', 400 
     username = data['username']
     password = data['password']
 
@@ -63,3 +59,14 @@ def login_user():
                         app.config['SECRET_KEY'],
                         algorithm='HS256')
     return token
+
+
+@app.get('/is-token-valid')
+@check_token
+def is_token_valid():
+    """ Function checks if token is valid. 
+    No params, just pass bearer token in authentication header.
+    The logic is already happening in @check_token decorator function.
+    If everything is ok, return 200, otherwise error will be returned from @check_token.
+    """
+    return 'token is valid', 200

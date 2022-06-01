@@ -1,6 +1,5 @@
+from flask import jsonify, request, current_app, Blueprint, g
 from datetime import datetime, timedelta
-from flask import jsonify, request
-from app import app, users_col
 from app.models import User
 from pymongo.errors import DuplicateKeyError
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -8,11 +7,18 @@ import jwt
 from app.routes_utils import check_token, required_roles
 import json
 from kafka import KafkaProducer
+from os import environ
+from app import mongo_api
 
-producer = KafkaProducer(bootstrap_servers=[app.config['KAFKA']],
+api = Blueprint('api', __name__)
+
+try:
+    producer = KafkaProducer(bootstrap_servers=[environ['KAFKA']],
                          value_serializer=lambda v: json.dumps(v).encode('utf-8'))
+except:
+    pass
 
-@app.post('/users')
+@api.post('/users')
 def create_new_user():
     data = request.json
     if not data.get('username') or not data.get('password'):   return 'did not receive username or password', 400 
@@ -21,28 +27,29 @@ def create_new_user():
 
     # add to db and check if username is unique
     try:
-        users_col.insert_one({
+        mongo_api.collection('users').insert_one({
             '_id': user.username, 
             'password': user.password,
             'role': user.role})
-        producer.send(app.config['KAFKA_TOPIC'], {'username': user.username})
+        producer.send(current_app.config['KAFKA_TOPIC'], {'username': user.username})
+        
     except DuplicateKeyError:
         return jsonify("username not unique"), 400
     
     return jsonify(user.username)
 
 
-@app.get('/users')
+@api.get('/users')
 @check_token
 @required_roles(['admin'])
 def get_all_users():
-    users_documents = users_col.find()
+    users_documents = mongo_api.collection('users').find()
     users: list[dict] = [user_document for user_document in users_documents]
     for user in users: user['_id'] = str(user['_id'])
     return jsonify(users)
 
 
-@app.get('/login')
+@api.get('/login')
 def login_user():
     data = request.json
     if not data.get('username') or not data.get('password'):   return 'did not receive username or password', 400 
@@ -50,7 +57,7 @@ def login_user():
     password = data['password']
 
     # find user with username
-    user:dict | User | None = users_col.find_one({'_id': username})
+    user:dict | User | None = mongo_api.collection('users').find_one({'_id': username})
     if not user: return f'not found user with username: {username}', 400
     user = User(username = user['_id'],
                 password = user['password'],
@@ -61,12 +68,12 @@ def login_user():
     if not is_password_correct: return 'wrong password provided', 400
 
     token = jwt.encode({'username': user.username, 'exp': datetime.utcnow() + timedelta(minutes=30)},
-                        app.config['SECRET_KEY'],
+                        current_app.config['SECRET_KEY'],
                         algorithm='HS256')
     return token
 
 
-@app.get('/is-token-valid')
+@api.get('/is-token-valid')
 @check_token
 def is_token_valid():
     """ Function checks if token is valid. 
@@ -74,4 +81,5 @@ def is_token_valid():
     The logic is already happening in @check_token decorator function.
     If everything is ok, return 200, otherwise error will be returned from @check_token.
     """
+
     return 'token is valid', 200

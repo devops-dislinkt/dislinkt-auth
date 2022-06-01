@@ -17,8 +17,8 @@ def create_app(env: Literal['prod', 'test'] = 'prod'):
     flask_app.config['JSON_AS_ASCII'] = False
     flask_app.config['SECRET_KEY'] = environ['FLASK_SECRET_KEY'] if 'FLASK_SECRET_KEY' in environ else 'my_secret_key'
     flask_app.config['HOST']  = environ['FLASK_DATABASE_HOST'] if 'FLASK_DATABASE_HOST' in environ else 'localhost'
-    # flask_app.config['KAFKA'] = environ['KAFKA']
-    # flask_app.config['KAFKA_TOPIC'] = environ['KAFKA_TOPIC']
+    flask_app.config['KAFKA'] = environ['KAFKA']
+    flask_app.config['KAFKA_TOPIC'] = environ['KAFKA_TOPIC']
 
     DATABASE_CONNECTION_URI = f"mongodb://root:password@{flask_app.config['HOST']}:27017/"
     

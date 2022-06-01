@@ -31,10 +31,6 @@ def create_new_user():
             '_id': user.username, 
             'password': user.password,
             'role': user.role})
-        
-        # TODO: podesiti kafku da posalje test topic ako je test env. 
-        # Mislim da bi trebalo preuzeti vrednost nakon send funkcije i proveriti da li se send izvrsio.
-        # Ako se send nije izvrsio treba da uhvatimo neki exception
         producer.send(current_app.config['KAFKA_TOPIC'], {'username': user.username})
         
     except DuplicateKeyError:

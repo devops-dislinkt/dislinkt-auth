@@ -12,11 +12,8 @@ from app import mongo_api
 
 api = Blueprint('api', __name__)
 
-try:
-    producer = KafkaProducer(bootstrap_servers=[environ['KAFKA']],
+producer = KafkaProducer(bootstrap_servers=[environ['KAFKA']],
                          value_serializer=lambda v: json.dumps(v).encode('utf-8'))
-except:
-    pass
 
 @api.post('/users')
 def create_new_user():

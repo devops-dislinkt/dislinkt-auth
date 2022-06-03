@@ -18,7 +18,9 @@ producer = KafkaProducer(bootstrap_servers=[environ['KAFKA']],
 @api.post('/users')
 def create_new_user():
     data = request.json
-    if not data.get('username') or not data.get('password'):   return 'did not receive username or password', 400 
+    if not data.get('username') or not data.get('password'): 
+        return 'did not receive username or password', 400 
+    
     hashed_password = generate_password_hash(data['password'])
     user = User(username=data['username'], password=hashed_password)
 
@@ -49,7 +51,9 @@ def get_all_users():
 @api.get('/login')
 def login_user():
     data = request.json
-    if not data.get('username') or not data.get('password'):   return 'did not receive username or password', 400 
+    if not data.get('username') or not data.get('password'): 
+        return 'did not receive username or password', 400 
+    
     username = data['username']
     password = data['password']
 
@@ -89,7 +93,8 @@ def edit_profile_username():
     user =  mongo_api.collection('users').find_one({'_id': user['username']})
     
     if not user: return 'user not found', 400
-    if not request.json.get('old_username') or not request.json.get('new_username'):   return 'did not receive username or password', 400 
+    if not request.json.get('old_username') or not request.json.get('new_username'): 
+        return 'did not receive username or password', 400 
     
     old_username = request.json.get('old_username')
     new_username = request.json.get('new_username')
@@ -100,6 +105,7 @@ def edit_profile_username():
     mongo_api.collection('users').insert_one(user) # insert with new _id
     mongo_api.collection('users').delete_one({'_id': old_username})
 
-    # TODO: DODATI KAFKU
+    producer.send(current_app.config['KAFKA_TOPIC'], 
+                {'username': old_username, 'new_username': new_username})
 
     return jsonify(request.json.get('new_username'))

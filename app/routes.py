@@ -37,8 +37,8 @@ def create_new_user():
 
 
 @api.get('/users')
-@check_token
-@required_roles(['admin'])
+# @check_token
+# @required_roles(['admin'])
 def get_all_users():
     users_documents = mongo_api.collection('users').find()
     users: list[dict] = [user_document for user_document in users_documents]
@@ -80,3 +80,28 @@ def is_token_valid():
     """
 
     return 'token is valid', 200
+
+@api.put('/users/username')
+# @check_token
+def edit_profile_username():
+    token = request.headers['authorization'].split(' ')[1]
+    user: dict | None = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
+    user =  mongo_api.collection('users').find_one({'_id': user['username']})
+    
+    if not user: return 'user not found', 400
+    if not request.json.get('old_username') or not request.json.get('new_username'):   return 'did not receive username or password', 400 
+    
+    old_username = request.json.get('old_username')
+    new_username = request.json.get('new_username')
+    
+    if old_username != user['_id']: return 'old_username not correct', 400
+
+    # mongo_api.collection('users').update_one({'_id': user['_id']}, {'$set': {'_id': request.json.get('new_username')}})
+    
+    user['_id'] = new_username # set new _id
+    mongo_api.collection('users').insert_one(user) # insert with new _id
+    mongo_api.collection('users').delete_one({'_id': old_username})
+
+    # TODO: DODATI KAFKU
+
+    return jsonify(request.json.get('new_username'))

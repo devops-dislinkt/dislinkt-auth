@@ -4,13 +4,14 @@ from app.models import User
 from pymongo.errors import DuplicateKeyError
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
-from app.routes_utils import check_token, required_roles
 import json
 from kafka import KafkaProducer
 from os import environ
 from app import mongo_api
 
 api = Blueprint('api', __name__)
+from .routes_utils import check_token, required_roles
+
 
 producer = KafkaProducer(bootstrap_servers=[environ['KAFKA']],
                          value_serializer=lambda v: json.dumps(v).encode('utf-8'))

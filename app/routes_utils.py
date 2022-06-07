@@ -3,6 +3,7 @@ from functools import wraps
 from app.models import User
 import jwt
 from app import mongo_api
+from .routes import api
 
 def check_token(f):
     @wraps(f)
@@ -27,6 +28,7 @@ def check_token(f):
 
         return f(*args, **kwargs)
     return wrap
+
 
 def required_roles(roles: list[str]):
     def decorator_required_roles(f):
@@ -53,3 +55,12 @@ def required_roles(roles: list[str]):
             return f(*args, **kwargs)
         return wrap
     return decorator_required_roles
+
+
+# allow all origin
+@api.after_request
+def after_request(response):
+    header = response.headers
+    header['Access-Control-Allow-Origin'] = '*'
+    header['Access-Control-Allow-Headers'] = '*'
+    return response

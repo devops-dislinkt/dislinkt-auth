@@ -1,4 +1,4 @@
-from flask import jsonify, request, current_app, Blueprint, g
+from flask import jsonify, request, current_app, Blueprint, g, Response
 from datetime import datetime, timedelta
 from app.models import User
 from pymongo.errors import DuplicateKeyError
@@ -15,7 +15,7 @@ api = Blueprint('api', __name__)
 producer = KafkaProducer(bootstrap_servers=[environ['KAFKA']],
                          value_serializer=lambda v: json.dumps(v).encode('utf-8'))
 
-@api.post('/users')
+@api.post('/auth/users')
 def create_new_user():
     data = request.json
     if not data.get('username') or not data.get('password'):   return 'did not receive username or password', 400 
@@ -36,17 +36,17 @@ def create_new_user():
     return jsonify(user.username)
 
 
-@api.get('/users')
+@api.get('/auth/users')
 @check_token
 @required_roles(['admin'])
 def get_all_users():
     users_documents = mongo_api.collection('users').find()
     users: list[dict] = [user_document for user_document in users_documents]
     for user in users: user['_id'] = str(user['_id'])
-    return jsonify(users)
+    return Response(jsonify(users))
 
 
-@api.get('/login')
+@api.get('/auth/login')
 def login_user():
     data = request.json
     if not data.get('username') or not data.get('password'):   return 'did not receive username or password', 400 
@@ -64,13 +64,13 @@ def login_user():
     is_password_correct = check_password_hash(user.password, password)
     if not is_password_correct: return 'wrong password provided', 400
 
-    token = jwt.encode({'username': user.username, 'exp': datetime.utcnow() + timedelta(minutes=30)},
+    token = jwt.encode({'username': user.username, 'role': user.role, 'exp': datetime.utcnow() + timedelta(minutes=30)},
                         current_app.config['SECRET_KEY'],
                         algorithm='HS256')
     return token
 
 
-@api.get('/is-token-valid')
+@api.get('/auth/is-token-valid')
 @check_token
 def is_token_valid():
     """ Function checks if token is valid. 
@@ -79,4 +79,4 @@ def is_token_valid():
     If everything is ok, return 200, otherwise error will be returned from @check_token.
     """
 
-    return 'token is valid', 200
+    return  Response('token is valid')

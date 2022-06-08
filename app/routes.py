@@ -69,7 +69,7 @@ def login_user():
     is_password_correct = check_password_hash(user.password, password)
     if not is_password_correct: return 'wrong password provided', 400
 
-    token = jwt.encode({'username': user.username, 'exp': datetime.utcnow() + timedelta(minutes=30)},
+    token = jwt.encode({'username': user.username, 'role': user.role , 'exp': datetime.utcnow() + timedelta(minutes=30)},
                         current_app.config['SECRET_KEY'],
                         algorithm='HS256')
     return token

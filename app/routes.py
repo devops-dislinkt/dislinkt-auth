@@ -49,7 +49,7 @@ def get_all_users():
     return jsonify(users)
 
 
-@api.get('/login')
+@api.post('/login')
 def login_user():
     data = request.json
     if not data.get('username') or not data.get('password'): 
@@ -72,7 +72,7 @@ def login_user():
     token = jwt.encode({'username': user.username, 'role': user.role , 'exp': datetime.utcnow() + timedelta(minutes=30)},
                         current_app.config['SECRET_KEY'],
                         algorithm='HS256')
-    return token
+    return jsonify(token)
 
 
 @api.get('/is-token-valid')

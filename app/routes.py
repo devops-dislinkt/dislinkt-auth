@@ -4,13 +4,14 @@ from app.models import User
 from pymongo.errors import DuplicateKeyError
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
-from app.routes_utils import check_token, required_roles
 import json
 from kafka import KafkaProducer
 from os import environ
 from app import mongo_api
 
 api = Blueprint('api', __name__)
+from .routes_utils import check_token, required_roles
+
 
 producer = KafkaProducer(bootstrap_servers=[environ['KAFKA']],
                          value_serializer=lambda v: json.dumps(v).encode('utf-8'))
@@ -18,7 +19,9 @@ producer = KafkaProducer(bootstrap_servers=[environ['KAFKA']],
 @api.post('/auth/users')
 def create_new_user():
     data = request.json
-    if not data.get('username') or not data.get('password'):   return 'did not receive username or password', 400 
+    if not data.get('username') or not data.get('password'): 
+        return 'did not receive username or password', 400 
+    
     hashed_password = generate_password_hash(data['password'])
     user = User(username=data['username'], password=hashed_password)
 
@@ -46,10 +49,12 @@ def get_all_users():
     return Response(jsonify(users))
 
 
-@api.get('/auth/login')
+@api.post('/login')
 def login_user():
     data = request.json
-    if not data.get('username') or not data.get('password'):   return 'did not receive username or password', 400 
+    if not data.get('username') or not data.get('password'): 
+        return 'did not receive username or password', 400 
+    
     username = data['username']
     password = data['password']
 
@@ -65,9 +70,10 @@ def login_user():
     if not is_password_correct: return 'wrong password provided', 400
 
     token = jwt.encode({'username': user.username, 'role': user.role, 'exp': datetime.utcnow() + timedelta(minutes=30)},
+
                         current_app.config['SECRET_KEY'],
                         algorithm='HS256')
-    return token
+    return jsonify(token)
 
 
 @api.get('/auth/is-token-valid')
@@ -78,5 +84,30 @@ def is_token_valid():
     The logic is already happening in @check_token decorator function.
     If everything is ok, return 200, otherwise error will be returned from @check_token.
     """
-
+    
     return  Response('token is valid')
+
+@api.put('/users/username')
+@check_token
+def edit_profile_username():
+    token = request.headers['authorization'].split(' ')[1]
+    user: dict | None = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
+    user =  mongo_api.collection('users').find_one({'_id': user['username']})
+    
+    if not user: return 'user not found', 400
+    if not request.json.get('old_username') or not request.json.get('new_username'): 
+        return 'did not receive username or password', 400 
+    
+    old_username = request.json.get('old_username')
+    new_username = request.json.get('new_username')
+    
+    if old_username != user['_id']: return 'old_username not correct', 400
+
+    user['_id'] = new_username # set new _id
+    mongo_api.collection('users').insert_one(user) # insert with new _id
+    mongo_api.collection('users').delete_one({'_id': old_username})
+
+    producer.send(current_app.config['KAFKA_TOPIC'], 
+                {'username': old_username, 'new_username': new_username})
+
+    return jsonify(request.json.get('new_username'))

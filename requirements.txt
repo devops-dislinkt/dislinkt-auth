@@ -10,3 +10,4 @@ Werkzeug==2.1.2
 kafka-python==2.0.2
 pytest==7.1.2
 pytest-env==0.6.2
+opentelemetry-instrumentation-flask

@@ -54,18 +54,18 @@ class TestClassCreateUser:
     '''Test case for creating user (adding new users to the system).'''
 
     def test_create_user_success(self, client: FlaskClient):
-        response = client.post('/api/users', json={'username': USER_NEW.username, 'password': USER_NEW.password})
+        response = client.post('/api/auth/users', json={'username': USER_NEW.username, 'password': USER_NEW.password})
         assert response.json == USER_NEW.username
         assert response.status_code == 200
 
     def test_create_user_without_username(self, client: FlaskClient):
-        response = client.post('/api/users', json={ 'password':USER_NEW.password})
+        response = client.post('/api/auth/users', json={ 'password':USER_NEW.password})
         msg = response.data.decode('UTF-8')
         assert 'did not receive username or password' == msg
         assert response.status_code == 400
 
     def test_create_user_with_existing_username(self, client: FlaskClient):
-        response = client.post('/api/users', json={'username': USER_VALID.username, 'password': USER_INVALID_PASS.password})
+        response = client.post('/api/auth/users', json={'username': USER_VALID.username, 'password': USER_INVALID_PASS.password})
         assert 'username not unique' == response.json
         assert response.status_code == 400
         
@@ -74,22 +74,22 @@ class TestClassToken:
     '''Test case for creating user token.'''
 
     def test_is_token_valid_without_token(self, client:FlaskClient):
-        response = client.get('/api/is-token-valid')
+        response = client.get('/api/auth/validate-token')
         msg = response.json['message']
         assert 'No token provided' == msg
-        assert response.status_code == 400
+        assert response.status_code == 403
 
     def test_is_token_valid_with_wrong_token(self, client:FlaskClient):
-        response = client.get('/api/is-token-valid', headers={'authorization': 'Bearer 12345asdfg'})
+        response = client.get('/api/auth/validate-token', headers={'authorization': 'Bearer 12345asdfg'})
         msg = response.data.decode('UTF-8')
         assert 'Invalid token. Please log in again.' == msg
-        assert response.status_code == 400
+        assert response.status_code == 403
 
     def test_is_token_valid_with_good_token(self, client:FlaskClient):
         # first login
         login_response = client.post('/api/auth/login', json = {'username': USER_VALID.username, 'password': USER_VALID.password})
         token = login_response.data.decode('UTF-8')
-        response = client.get('/api/is-token-valid', headers={'authorization': f'Bearer {token}'})
+        response = client.get('/api/auth/validate-token', headers={'authorization': f'Bearer {token}'})
         msg = response.data.decode('UTF-8')
         assert 'token is valid' == msg
         assert response.status_code == 200

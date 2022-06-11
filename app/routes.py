@@ -73,7 +73,7 @@ def login_user():
 
                         current_app.config['SECRET_KEY'],
                         algorithm='HS256')
-    return jsonify(token)
+    return token
 
 
 @api.get('/auth/validate-token')

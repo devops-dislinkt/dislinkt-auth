@@ -88,7 +88,7 @@ class TestClassToken:
     def test_is_token_valid_with_good_token(self, client:FlaskClient):
         # first login
         login_response = client.post('/api/auth/login', json = {'username': USER_VALID.username, 'password': USER_VALID.password})
-        token = login_response.data.decode('UTF-8')
+        token = login_response.json
         response = client.get('/api/auth/validate-token', headers={'authorization': f'Bearer {token}'})
         msg = response.data.decode('UTF-8')
         assert 'token is valid' == msg

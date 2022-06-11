@@ -87,7 +87,7 @@ class TestClassToken:
 
     def test_is_token_valid_with_good_token(self, client:FlaskClient):
         # first login
-        login_response = client.post('/api/login', json = {'username': USER_VALID.username, 'password': USER_VALID.password})
+        login_response = client.post('/api/auth/login', json = {'username': USER_VALID.username, 'password': USER_VALID.password})
         token = login_response.data.decode('UTF-8')
         response = client.get('/api/is-token-valid', headers={'authorization': f'Bearer {token}'})
         msg = response.data.decode('UTF-8')
@@ -99,20 +99,20 @@ class TestClassLogin:
     '''Test case for when user logs in.'''
 
     def test_login_success(self, client: FlaskClient):
-        response = client.post('/api/login', json = {'username': USER_VALID.username, 'password': USER_VALID.password})
+        response = client.post('/api/auth/login', json = {'username': USER_VALID.username, 'password': USER_VALID.password})
         assert response.status_code == 200
 
     def test_login_with_wrong_username(self, client: FlaskClient):
-        response = client.post('/api/login', json = {'username': USER_INVALID_USERNAME.username, 'password': USER_INVALID_USERNAME.password})
+        response = client.post('/api/auth/login', json = {'username': USER_INVALID_USERNAME.username, 'password': USER_INVALID_USERNAME.password})
         assert 'not found user' in response.data.decode('UTF-8')
         assert response.status_code == 400
 
     def test_login_with_wrong_password(self, client: FlaskClient):
-        response = client.post('/api/login', json = {'username': USER_INVALID_PASS.username, 'password': USER_INVALID_PASS.password})
+        response = client.post('/api/auth/login', json = {'username': USER_INVALID_PASS.username, 'password': USER_INVALID_PASS.password})
         assert 'wrong password provided' == response.data.decode('UTF-8')
         assert response.status_code == 400
 
     def test_login_without_password(self, client: FlaskClient):
-        response = client.post('/api/login', json = {'username': USER_VALID.username})
+        response = client.post('/api/auth/login', json = {'username': USER_VALID.username})
         assert 'did not receive username or password' == response.data.decode('UTF-8')
         assert response.status_code == 400

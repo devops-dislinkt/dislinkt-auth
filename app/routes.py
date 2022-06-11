@@ -76,7 +76,7 @@ def login_user():
     return jsonify(token)
 
 
-@api.get('/auth/validate-token')
+@api.get('/auth/is-token-valid')
 @check_token
 def validate_token():
     """ Function checks if token is valid. 

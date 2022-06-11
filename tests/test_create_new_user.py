@@ -74,13 +74,13 @@ class TestClassToken:
     '''Test case for creating user token.'''
 
     def test_is_token_valid_without_token(self, client:FlaskClient):
-        response = client.get('/api/auth/validate-token')
+        response = client.get('/api/auth/is-token-valid')
         msg = response.json['message']
         assert 'No token provided' == msg
         assert response.status_code == 403
 
     def test_is_token_valid_with_wrong_token(self, client:FlaskClient):
-        response = client.get('/api/auth/validate-token', headers={'authorization': 'Bearer 12345asdfg'})
+        response = client.get('/api/auth/is-token-valid', headers={'authorization': 'Bearer 12345asdfg'})
         msg = response.data.decode('UTF-8')
         assert 'Invalid token. Please log in again.' == msg
         assert response.status_code == 403
@@ -89,7 +89,7 @@ class TestClassToken:
         # first login
         login_response = client.post('/api/auth/login', json = {'username': USER_VALID.username, 'password': USER_VALID.password})
         token = login_response.json
-        response = client.get('/api/auth/validate-token', headers={'authorization': f'Bearer {token}'})
+        response = client.get('/api/auth/is-token-valid', headers={'authorization': f'Bearer {token}'})
         msg = response.data.decode('UTF-8')
         assert 'token is valid' == msg
         assert response.status_code == 200

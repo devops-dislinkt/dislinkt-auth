@@ -1,0 +1,26 @@
+name: CI
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev, main]
+
+jobs:
+  
+  build:
+    runs-on: ${{ matrix.operating-system }}    
+    strategy:
+      matrix:
+        operating-system: [ubuntu-latest]
+    steps:
+    #----------------------------------------------
+    #       check-out repo
+    #----------------------------------------------
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+    #----------------------------------------------
+    #       check commit message
+    #----------------------------------------------
+      - name : Check commit messages
+        uses: wagoid/commitlint-github-action@v4

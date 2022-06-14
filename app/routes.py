@@ -49,7 +49,7 @@ def get_all_users():
     return Response(jsonify(users))
 
 
-@api.post('/login')
+@api.post('/auth/login')
 def login_user():
     data = request.json
     if not data.get('username') or not data.get('password'): 
@@ -78,7 +78,7 @@ def login_user():
 
 @api.get('/auth/is-token-valid')
 @check_token
-def is_token_valid():
+def validate_token():
     """ Function checks if token is valid. 
     No params, just pass bearer token in authentication header.
     The logic is already happening in @check_token decorator function.

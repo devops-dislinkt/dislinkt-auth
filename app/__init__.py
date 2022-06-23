@@ -25,8 +25,10 @@ def create_app(env: Literal["prod", "test"] = "prod"):
         if "FLASK_DATABASE_HOST" in environ
         else "localhost"
     )
-    flask_app.config["KAFKA"] = environ["KAFKA"]
-    flask_app.config["KAFKA_TOPIC"] = environ["KAFKA_TOPIC"]
+    flask_app.config["KAFKA"] = environ["KAFKA"] if "KAFKA" in environ else "none"
+    flask_app.config["KAFKA_TOPIC"] = (
+        environ["KAFKA_TOPIC"] if "KAFKA_TOPIC" in environ else "test-topic"
+    )
 
     DATABASE_CONNECTION_URI = (
         f"mongodb://root:password@{flask_app.config['HOST']}:27017/"

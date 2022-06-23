@@ -83,7 +83,6 @@ jobs:
           mongodb-username: root
           mongodb-password: password
           mongodb-db: test_db
-          mongodb-port: 27018
       - name: Test with pytest
         run: | 
               poetry run coverage erase

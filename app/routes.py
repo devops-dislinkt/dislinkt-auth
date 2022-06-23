@@ -13,6 +13,7 @@ from app import mongo_api
 api = Blueprint("api", __name__)
 from .routes_utils import check_token, required_roles
 
+producer = None
 try:
     producer = KafkaProducer(
         bootstrap_servers=[environ["KAFKA"]],
@@ -36,7 +37,8 @@ def create_new_user():
         mongo_api.collection("users").insert_one(
             {"_id": user.username, "password": user.password, "role": user.role}
         )
-        producer.send(current_app.config["KAFKA_TOPIC"], {"username": user.username})
+        if (producer):
+            producer.send(current_app.config["KAFKA_TOPIC"], {"username": user.username})
 
     except DuplicateKeyError:
         return jsonify("username not unique"), 400

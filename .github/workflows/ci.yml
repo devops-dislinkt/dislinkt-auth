@@ -1,0 +1,161 @@
+name: CI
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev, main]
+
+jobs:
+  
+  build:
+    runs-on: ${{ matrix.operating-system }}    
+    strategy:
+      matrix:
+        operating-system: [ubuntu-latest]
+        python: [3.10.0]
+        poetry-version: [1.1.12]
+    steps:
+    #----------------------------------------------
+    #       check-out repo and set-up python
+    #----------------------------------------------
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Set up python 
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+    #----------------------------------------------
+    #       check commit message
+    #----------------------------------------------
+      - name : Check commit messages
+        uses: wagoid/commitlint-github-action@v4
+    #----------------------------------------------
+    #     load cached poetry if cache exists
+    #----------------------------------------------
+      - name: Load cached Poetry installation
+        id: cached-poetry-installation
+        uses: actions/cache@v2
+        with:
+          path: ~/.local 
+          key: poetry-0
+    #----------------------------------------------
+    # install & configure poetry if cache does not exist
+    #----------------------------------------------
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ matrix.poetry-version }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          installer-parallel: true
+        if: steps.cached-poetry-installation.outputs.cache-hit != 'true'
+    #----------------------------------------------
+    #  install dependencies if cache does not exist
+    #----------------------------------------------
+      - name: Load cached venv
+        id: cached-poetry-dependencies
+        uses: actions/cache@v2
+        with:
+          path: .venv
+          key: venv1-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            venv1-${{ runner.os }}-
+      - name: Install dependencies
+        run: poetry install
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+    #----------------------------------------------
+    #  check lint with black lib
+    #----------------------------------------------
+      - name: Check lint with Black
+        uses: psf/black@stable
+        with:
+          options: "--check --verbose"
+          src: "."
+          version: "22.3.0"
+    #----------------------------------------------
+    #       run unit and integration tests
+    #----------------------------------------------
+      - name: Start MongoDB
+        uses: supercharge/mongodb-github-action@1.7.0
+        with:
+          mongodb-version: 4.2
+          mongodb-username: root
+          mongodb-password: password
+          mongodb-db: test_db
+      - name: Test with pytest
+        run: | 
+              poetry run coverage erase
+              poetry run coverage run --source=app -m pytest 
+              poetry run coverage xml
+        env:
+            FLASK_DATABASE_HOST: localhost
+            FLASK_SECRET_KEY: key
+            KAFKA: none
+    #----------------------------------------------
+    #    get next version
+    #----------------------------------------------
+      - name: Determine next version
+        id: version
+        if: github.event_name == 'push'
+        run: |
+          echo "::set-output name=VERSION::$(npx semantic-release --dry-run | grep -oP 'Published release \K.*? ')"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #----------------------------------------------
+    #     upload test coverage 
+    #----------------------------------------------
+      - name: Upload test coverage
+        uses: actions/upload-artifact@v1
+        if: github.event_name == 'push'
+        with:
+          name: test-coverage-${{ steps.version.outputs.VERSION }}
+          path: coverage.xml
+  
+    #----------------------------------------------
+    #     build project and upload
+    #----------------------------------------------
+      - name: Build
+        run: |
+            poetry version ${{ steps.version.outputs.VERSION }}
+            poetry build
+      - name: Upload build
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v3
+        with:
+            name: build-${{ steps.version.outputs.VERSION }}
+            path: dist/*.tar.gz
+
+    #----------------------------------------------
+    #     create release 
+    #----------------------------------------------
+      - name: Create a Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #----------------------------------------------
+    #       publish docker image to DockerHub
+    #----------------------------------------------    
+      - name: Set up QEMU
+        if: github.event_name == 'push'
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        if: github.event_name == 'push'
+        uses: docker/setup-buildx-action@v1
+      - name: Login to DockerHub
+        if: github.event_name == 'push'
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PASS }}
+      - name: Build and push
+        if: github.event_name == 'push'
+        id: docker_build
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/dislinkt-auth:${{ steps.version.outputs.VERSION }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_HUB_USERNAME }}/dislinkt-auth:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_HUB_USERNAME }}/dislinkt-auth:buildcache,mode=max
+          

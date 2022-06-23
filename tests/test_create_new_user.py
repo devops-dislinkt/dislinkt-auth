@@ -55,9 +55,9 @@ def client() -> FlaskClient:
     Returns flask client app.
     """
     # setup
-    teardown_db()
     app = create_app("test")
-    setup_db()
+    teardown_db()
+    seed_db()
 
     with app.test_client() as client:
         yield client

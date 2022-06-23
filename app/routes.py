@@ -37,8 +37,10 @@ def create_new_user():
         mongo_api.collection("users").insert_one(
             {"_id": user.username, "password": user.password, "role": user.role}
         )
-        if (producer):
-            producer.send(current_app.config["KAFKA_TOPIC"], {"username": user.username})
+        if producer:
+            producer.send(
+                current_app.config["KAFKA_TOPIC"], {"username": user.username}
+            )
 
     except DuplicateKeyError:
         return jsonify("username not unique"), 400

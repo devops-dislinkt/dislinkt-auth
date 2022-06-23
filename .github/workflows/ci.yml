@@ -91,6 +91,7 @@ jobs:
         env:
             FLASK_DATABASE_HOST: localhost
             FLASK_SECRET_KEY: key
+            KAFKA: none
     #----------------------------------------------
     #    get next version
     #----------------------------------------------

@@ -6,17 +6,20 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
 import json
 from kafka import KafkaProducer
+from kafka.errors import KafkaError
 from os import environ
 from app import mongo_api
 
 api = Blueprint("api", __name__)
 from .routes_utils import check_token, required_roles
 
-
-producer = KafkaProducer(
-    bootstrap_servers=[environ["KAFKA"]],
-    value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-)
+try:
+    producer = KafkaProducer(
+        bootstrap_servers=[environ["KAFKA"]],
+        value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+    )
+except KafkaError as exc:
+    print("kafka producer - Exception during connecting to producer - {}".format(exc))
 
 
 @api.post("/auth/users")
@@ -37,6 +40,12 @@ def create_new_user():
 
     except DuplicateKeyError:
         return jsonify("username not unique"), 400
+    except KafkaError as err:
+        print(
+            "kafka producer - Exception during sending message to producer - {}".format(
+                err
+            )
+        )
 
     return jsonify(user.username)
 

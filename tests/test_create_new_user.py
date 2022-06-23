@@ -5,6 +5,7 @@ from app import create_app, mongo_api
 from app.models import User 
 from flask.testing import FlaskClient
 from werkzeug.security import generate_password_hash
+from app import mongo_api
 
 # constants
 USER_VALID = User(username='test_djura', password='test_djura123')
@@ -13,13 +14,8 @@ USER_INVALID_USERNAME = User(username='test_niko', password='test_niko')
 USER_NEW = User(username='test_pera', password='test_pera123')
 
 # helper methods for database
-def setup_db():
+def seed_db():
     '''setup database before tests start executing'''
-    # reroute traffic to test database
-    mongo_api.database = mongo_api.connection[os.environ['TEST_DB']]
-    # empty test db just in case
-    mongo_api.connection.drop_database(os.environ['TEST_DB'])
-
     # insert dummy data for tests
     mongo_api.collection('users').insert_many([
         {'_id': 'test_admin', 'password':generate_password_hash('test_admin'), 'role': 'admin'},
@@ -30,7 +26,8 @@ def setup_db():
 
 def teardown_db():
     '''destroy testing database and all of its content after tests finished.'''
-    mongo_api.connection.drop_database(os.environ['TEST_DB'])
+    mongo_api.collection("test_db").drop()
+
 
 @pytest.fixture(scope='module')
 def client() -> FlaskClient:
@@ -39,6 +36,7 @@ def client() -> FlaskClient:
     Returns flask client app.
     '''
     # setup
+    teardown_db()
     app = create_app('test')
     setup_db()
     

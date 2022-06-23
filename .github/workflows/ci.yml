@@ -82,7 +82,7 @@ jobs:
           mongodb-version: 4.2
           mongodb-username: root
           mongodb-password: password
-          mongodb-db: user_post_test
+          mongodb-db: test_db
           mongodb-port: 27018
       - name: Test with pytest
         run: | 
